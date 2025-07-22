@@ -47,10 +47,30 @@ func httpSettings() *settings.HttpSettings {
 	return settings.NewHttpSettings(url)
 }
 
-func Greet(task *model.Task) (interface{}, error) {
-	return map[string]interface{}{
-		"greetings": "Hello, " + fmt.Sprintf("%v", task.InputData["name"]),
-	}, nil
+func Greet(task *model.Task) (result interface{}, err error) {
+	taskResult := model.NewTaskResultFromTask(task)
+	
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("Panic occurred in worker: %v", r)
+			taskResult.Status = "FAILED"
+			taskResult.ReasonForIncompletion = fmt.Sprintf("Task failed due to panic: %v", r)
+			taskResult.OutputData = nil
+			result = taskResult // Set the named return value
+			err = fmt.Errorf("task failed due to panic: %v", r)
+		}
+	}()
+
+	// panic("ahhh panicao")
+	// Process the task
+	greetingMsg := "Hello, " + fmt.Sprintf("%v", task.InputData["name"])
+	
+	taskResult.Status = "COMPLETED"
+	taskResult.OutputData = map[string]interface{}{
+		"greetings": greetingMsg,
+	}
+	
+	return taskResult, nil
 }
 
 func main() {
